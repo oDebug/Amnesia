@@ -1,0 +1,428 @@
+float sanityFactor = 1.0f;
+float curSanity = 100.0f;
+float oldSanity = 100.0f;
+float oilFactor = 0.6f;
+float curOil = 100.0f; //meaningless value
+float oldOil = 100.0f; //meaningless value
+//45
+void OnStart()
+{
+/////CALLBACKS	
+	SetEntityCallbackFunc("note_HiddenDoor", "NotePickup");
+	AddEntityCollideCallback("Player", "ScriptArea_TriggerMan", "BeginCeilingScare", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_GlassBreak", "BreakGlass", true, 1);
+	AddEntityCollideCallback("book_moveable_1", "ScriptArea_BookLever", "OpenSecretDoor", true, 1);
+	AddEntityCollideCallback("corpse_male_1", "ScriptArea_LightOff1", "TurnOffLight", true, 1);
+	AddEntityCollideCallback("corpse_male_1", "ScriptArea_LightOff2", "TurnOffLight", true, 1);
+	AddEntityCollideCallback("corpse_male_1", "ScriptArea_LightOff3", "TurnOffLight", true, 1);
+	SetEntityCallbackFunc("candlestick_wall_5", "LitCandle");
+	SetEntityCallbackFunc("candlestick_wall_6", "LitCandle");
+	SetEntityCallbackFunc("candlestick_wall_7", "LitCandle");
+	SetEntityCallbackFunc("candlestick_wall_4", "LitCandle");
+	AddUseItemCallback("", "key_ToUpstairs", "mansion_ToUpstairs", "UsedKeyOnDoor", true); //what key, what door, what method, destroy key on use
+	SetEntityPlayerInteractCallback("mansion_ToUpstairs", "StartKeyQuest", true);
+	SetEntityCallbackFunc("key_ToUpstairs", "PickupKey");
+/////////
+	//AddTimer("SanityTimer", 0.5f, "UpdateSanity");
+	PlaySoundAtEntity("", "05_whineLoop.snt", "book02_7", 0.0f, true);
+	oldOil = GetPlayerLampOil(); // set up old oil .5 secs before UpdateSanity is called for the first time.
+	oldSanity = GetPlayerSanity();
+	SetSwingDoorDisableAutoClose("mansion_2", true);
+	SetSwingDoorDisableAutoClose("mansion_3", true);
+	SetSwingDoorDisableAutoClose("mansion_4", true);
+	SetSwingDoorDisableAutoClose("mansion_5", true);
+	SetSwingDoorDisableAutoClose("mansion_6", true);
+	SetSwingDoorDisableAutoClose("mansion_7", true);
+	SetMoveObjectState("shelf_secret_door_1", 0.0f);
+	SetLightVisible("PointLight_20", false);
+	SetLightVisible("PointLight_21", false);
+	SetLightVisible("PointLight_22", false);
+	SetLightVisible("PointLight_23", false);
+	PreloadSound("Threnody for the victims of Hiroshima.snt");
+}
+
+void NotePickup(string &in asEntity, string &in type)
+{
+	AddEntityCollideCallback("Player", "ScriptArea_TriggerUpstairs", "TriggerUpstairs", true, 1);
+	CheckPoint("LibChpt", "PlayerStartArea_Checkpoint", "", "", "");		
+	for(int i = 1; i < 8; i++)
+	{
+		SetEntityActive("chair_metal_"+i, true);
+	}
+}
+
+void TriggerUpstairs(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("servant_grunt_1", true);
+	for(int i = 1; i < 46; i++)
+	{
+		AddEnemyPatrolNode("servant_grunt_1", "PathNodeArea_" + i, 0, "");
+	}
+}
+
+void PickupKey(string &in asEntity, string &in type)
+{
+	SetEntityActive("servant_grunt_3", true); //Comment out until music problem is solved
+	ShowEnemyPlayerPosition("servant_grunt_3");	
+}
+
+void StartKeyQuest(string &in asEntity)
+{	
+	AddQuest("keyquest", "KeyQuest");
+}
+
+void UsedKeyOnDoor(string &in asItem, string &in asEntity)
+{
+  SetSwingDoorLocked("mansion_ToUpstairs", false, true);
+  PlaySoundAtEntity("", "unlock_door.snt", "mansion_ToUpstairs", 0, false);
+  RemoveItem("key_ToUpstairs");
+  CompleteQuest("keyquest", "KeyQuest");
+  
+	RemoveTimer("mansion_2Timer");
+	RemoveTimer("mansion_3Timer");
+	RemoveTimer("mansion_4Timer");
+	RemoveTimer("mansion_5Timer");
+	RemoveTimer("mansion_6Timer");
+	RemoveTimer("mansion_7Timer");
+	RemoveTimer("object_Timer_1");
+	RemoveTimer("Flesh_Timer_1");
+	RemoveTimer("Flesh_Timer_2");
+}
+
+void LitCandle(string &in asEntity, string &in type)
+{
+	if(asEntity == "candlestick_wall_5" && type == "OnIgnite")
+	{
+		SetLightVisible("PointLight_20", true);
+	}
+	if(asEntity == "candlestick_wall_4" && type == "OnIgnite")
+	{
+		SetLightVisible("PointLight_21", true);
+	}
+	if(asEntity == "candlestick_wall_6" && type == "OnIgnite")
+	{
+		SetLightVisible("PointLight_22", true);
+	}
+	if(asEntity == "candlestick_wall_7" && type == "OnIgnite")
+	{
+		SetLightVisible("PointLight_23", true);
+	}
+}
+
+void OpenSecretDoor(string &in asParent, string &in asChild, int alState)
+{
+	//CompleteQuest("bookquest", "BookQuest");
+	SetMoveObjectState("shelf_secret_door_1", 1.0f);
+	
+	PlaySoundAtEntity("", "unlock_door.snt", "Player", 0, false);	
+}
+
+void BreakGlass(string &in asParent, string &in asChild, int alState)
+{	
+	SetPropHealth("display_2", 0.0f);
+}
+
+void TurnOffLight(string &in asParent, string &in asChild, int alState)
+{	
+	if(asChild == "ScriptArea_LightOff1")
+	{
+		SetLampLit("candlestick_floor_8", false, true);
+		SetLampLit("candlestick_floor_9", false, true);
+	}
+	if(asChild == "ScriptArea_LightOff2")
+	{
+		SetLampLit("candlestick_floor_10", false, true);
+		SetLampLit("candlestick_floor_11", false, true);
+	}
+	if(asChild == "ScriptArea_LightOff3")
+	{
+		SetLampLit("candlestick_floor_12", false, true);
+		SetLampLit("candlestick_floor_13", false, true);
+		AddTimer("Disapoop", 0.9f, "RemoveMan");
+		StopPlayerLookAt();
+		SetPlayerActive(true);
+	}
+	
+}
+
+void RemoveMan(string &in asTimer)
+{	
+	SetEntityActive("corpse_male_1", false);
+	
+	
+	//EntityTimers
+	AddTimer("mansion_2Timer", 0.1f, "doorImpulse1");
+	AddTimer("mansion_3Timer", 0.1f, "doorImpulse2");
+	AddTimer("mansion_4Timer", 0.1f, "doorImpulse3");
+	
+	AddTimer("mansion_5Timer", 0.1f, "doorImpulse4");
+	AddTimer("mansion_6Timer", 0.1f, "doorImpulse5");
+	AddTimer("mansion_7Timer", 0.1f, "doorImpulse6");
+	
+	AddTimer("object_Timer_1", 0.1f, "ObjectTimer");
+	AddTimer("Flesh_Timer_1", 0.1f, "FleshTimer");
+	AddTimer("Flesh_Timer_2", 0.7f, "FleshTimer");
+	
+	RemoveTimer("steady_2");
+	
+}
+
+void BeginCeilingScare(string &in asParent, string &in asChild, int alState)
+{	
+	//PlayMusic("Threnody for the victims of Hiroshima", true, 0.8f, 0.1f, 7, true);
+	PlaySoundAtEntity("Hiroshima", "Threnody for the victims of Hiroshima.snt", "Player", 0.0f, false);
+	PlaySoundAtEntity("Teeth", "BinauralTeethShort.snt", "Player", 0.0f, false);
+	AddTimer("steady_2", 0.1f, "Impulses_2");
+	SetPlayerActive(false);
+	StartPlayerLookAt("lookBox", 1.0f, 5.0f, "");
+	SetEntityActive("corpse_male_1", true);
+	
+	SetLanternActive(false, true);
+}
+
+void FleshTimer(string &in asTimer)
+{
+	int rand = RandInt(0, 8);
+	float z = RandFloat(-10.0f, 10.7f);
+	float y = RandFloat(0.0f, 10.7f);
+	float x = RandFloat(-10.7f, 10.7f);
+	
+	switch(rand)
+	{
+		case 0:
+			AddPropImpulse("corpse_male_leg_1", x, y, z, "World");
+			break;
+		case 1:
+			AddPropImpulse("corpse_male_leg_2", x, y, z, "World");
+			break;
+		case 2:
+			AddPropImpulse("corpse_male_leg_3", x, y, z, "World");
+			break;
+		case 3:
+			AddPropImpulse("corpse_male_leg_4", x, y, z, "World");
+			break;
+		case 4:
+			AddPropImpulse("corpse_male_arm_1", x, y, z, "World");
+			break;
+		case 5:
+			AddPropImpulse("corpse_male_arm_2", x, y, z, "World");
+			break;
+		case 6:
+			AddPropImpulse("corpse_male_arm_3", x, y, z, "World");
+			break;
+		case 7:
+			AddPropImpulse("corpse_male_arm_4", x, y, z, "World");
+			break;
+		case 8:
+			AddPropImpulse("corpse_male_torso_4", x, y, z, "World");
+			break;
+	}
+	if(asTimer == "Flesh_Timer_1")
+	AddTimer(asTimer, 0.3f, "FleshTimer");
+	else
+	AddTimer(asTimer, 0.7f, "FleshTimer");
+}
+
+void ObjectTimer(string &in asTimer)
+{
+	int rand = RandInt(0, 8);
+	float i = RandFloat(1.0, 8.0);
+	
+	switch(rand)
+	{
+		case 0:
+			AddPropImpulse("scareDrawers_2", 5.0f, 0.0f, 0.0f, "World");
+			break;
+		case 1:
+			AddPropImpulse("scareDrawers_3", 5.0f, 0.0f, 0.0f, "World");
+			break;
+		case 2:
+			AddPropImpulse("armchair_1", 0.0f, 5.0f, -5.0f, "World");
+			break;
+		case 3:
+			AddPropImpulse("armchair_2", 1.0f, 5.0f, -5.0f, "World");
+			break;
+		case 4:
+			AddPropImpulse("scareDrawers_1", 0.0f, 0.0f, -5.0f, "World");
+			break;
+		case 5:
+			AddPropImpulse("vase01_1", 0.0f, 0.0f, -5.0f, "World");
+			break;
+		case 6:
+			AddPropImpulse("book03_1", i, 0.0f, 5.0f, "World");
+			AddPropImpulse("book02_1", 0.0f, 5.0f, 5.0f, "World");
+			break;
+		case 7:
+			AddPropImpulse("book03_2", 0.0f, i, 5.0f, "World");
+			AddPropImpulse("book02_2", 0.0f, 5.0f, 5.0f, "World");
+			break;
+		case 8:
+			AddPropImpulse("book03_3", i, 5.0f, 5.0f, "World");
+			AddPropImpulse("book02_3", 0.0f, i, 5.0f, "World");
+			break;
+	}
+	
+	AddTimer(asTimer, 0.5f, "ObjectTimer");
+	
+}	
+
+void doorImpulse1(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_2", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_2Timer", randTime, "doorImpulse1");
+}
+
+void doorImpulse2(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_3", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_3Timer", randTime, "doorImpulse2");
+}
+
+void doorImpulse3(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_4", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_4Timer", randTime, "doorImpulse3");
+}
+
+void doorImpulse4(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_5", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_5Timer", randTime, "doorImpulse4");
+}
+
+void doorImpulse5(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_6", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_6Timer", randTime, "doorImpulse5");
+}
+
+void doorImpulse6(string &in asTimer)
+{
+	float randTime = RandFloat(0.1, 1.0);
+	float x = RandFloat(1.0, 8.0);
+	int positive = RandInt(0, 1);
+	float mult = 1.0f;	
+	if(positive == 1)
+	{
+		mult = -1.0f;
+	}
+	x = x*mult; //positive or negative
+	
+	AddPropImpulse("mansion_7", x, 0.0f, 0.0f, "World");
+	AddTimer("mansion_7Timer", randTime, "doorImpulse6");
+}
+
+void Impulses_2(string &in asTimer)
+{
+	float z = 0.8f;
+	float y = 0.0f;
+	float x = RandFloat(-0.7f, 0.7f);
+	AddPropImpulse("corpse_male_1", x, y, z, "World");
+	AddTimer("steady_2", 0.1f, "Impulses_2");
+}
+
+void UpdateSanity(string &in asTimer)
+{	
+	curSanity = GetPlayerSanity(); //get this update's sanity level
+	curOil = GetPlayerLampOil();  //get this update's oil level
+	
+	float tempOil; // variable to hold difference in curOil and oilFactor
+	if (curOil < oldOil)  //If we lost oil since 0.5 secs ago (meaning the lantern is in use)
+	{	
+		tempOil = curOil - oilFactor; 
+		SetPlayerLampOil(tempOil); //After losing the oilFactor, change player's oil amount
+	}
+	if (curOil <= 0.0f) // if result of operation above is <= 0, set it to zero
+	{
+		SetPlayerLampOil(0.0f);
+	}
+	
+	float temp;
+	if(curSanity < oldSanity)
+	{	
+		temp = curSanity - sanityFactor;
+		SetPlayerSanity(temp);
+	}
+	
+	if (curSanity >= oldSanity)
+	{
+		temp = curSanity + sanityFactor;
+		if(temp <= 100.0f)
+		{		
+			SetPlayerSanity(temp);
+		}
+		else
+		{
+			SetPlayerSanity(100.0f);
+		}
+	}
+	curSanity = GetPlayerSanity();
+	oldSanity = curSanity;
+	curOil = GetPlayerLampOil(); //get oil amount after we changed it with SetPlayerLampOil(tempOil);???
+	oldOil = curOil; //make sure the current oil is the next update's oldOil.
+	
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //update
+}
+
+void OnEnter()
+{
+	AutoSave();
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //update
+}
+
+void OnLeave()
+{
+	RemoveTimer("SanityTimer"); //Remove timer on exit
+	
+}
+

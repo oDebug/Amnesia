@@ -1,0 +1,138 @@
+float sanityFactor = 0.5f;
+float curSanity = 100.0f;
+float oldSanity = 100.0f;
+float oilFactor = 0.6f;
+float curOil = 100.0f; //meaningless value
+float oldOil = 100.0f; //meaningless value
+
+void OnStart()
+{	
+	
+////////CALLBACKS
+	AddEntityCollideCallback("Player", "ScriptArea_TriggerEnemy", "TriggerEnemy", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_TriggerWater", "TriggerWater", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_Binaural1", "TriggerBinSound", true, 1);
+	AddEntityCollideCallback("servant_grunt_4", "ScriptArea_FirstMonster", "RemoveFirstMonster", true, 1);
+	SetEntityCallbackFunc("key_study_1", "PickupKey");
+	AddUseItemCallback("", "key_study_1", "level_engine_2", "UsedKeyOnDoor", true); //what key, what door, what method, destroy key on use
+	AddEnemyPatrolNode("servant_grunt_4", "PathNodeArea_35", 0, "");
+	AddEnemyPatrolNode("servant_grunt_4", "PathNodeArea_36", 0, "");
+////////	
+	PlaySoundAtEntity("Moonlight_Calm", "MoonlightCalm.snt", "piano_1", 0.0f, false);
+	//AddTimer("SanityTimer", 0.5f, "UpdateSanity");
+	oldOil = GetPlayerLampOil(); // set up old oil .5 secs before UpdateSanity is called for the first time.
+	
+}
+
+void RemoveFirstMonster(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("servant_grunt_4", false);
+}
+
+void UsedKeyOnDoor(string &in asItem, string &in asEntity)
+{
+  SetLevelDoorLocked("level_engine_2", false);
+  PlaySoundAtEntity("", "unlock_door.snt", "level_engine_2", 0, false);
+  RemoveItem("key_study_1");
+}
+
+void TriggerWater(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("waterlurker_1", true);
+}
+
+
+void TriggerBinSound(string &in asParent, string &in asChild, int alState)
+{
+	PlaySoundAtEntity("BinPineLeft", "BinauralPineLeft.snt", "Player", 0.0f, false);
+}
+
+void TriggerEnemy(string &in asParent, string &in asChild, int alState)
+{
+	CheckPoint ("FirstMonsterChpt", "PlayerStartArea_Chpt", "", "", "");
+	SetEntityActive("servant_grunt_1", true);
+	SetEntityActive("servant_grunt_2", true);
+	for(int x = 1; x <= 34; x++)
+	{
+		AddEnemyPatrolNode("servant_grunt_1", "PathNodeArea_" + x, 0, "");
+	}
+	
+	AddEnemyPatrolNode("servant_grunt_2", "PathNodeArea_1", 4, "");
+	for(int x = 2; x <= 34; x++)
+	{
+		AddEnemyPatrolNode("servant_grunt_2", "PathNodeArea_" + x, 0, "");
+	}
+}
+
+void PickupKey(string &in asEntity, string &in type)
+{
+	StopSound("Moonlight_Calm", 2.0f);
+	PlaySoundAtEntity("Moonlight_Intense", "MoonlightIntense.snt", "piano_1", 0.0f, false);
+	
+	SetLightVisible("PointLight_1", false);
+	SetLightVisible("PointLight_2", false);
+	SetLampLit("chandelier_simple_1", false, true);
+	SetLampLit("chandelier_simple_2", false, true);
+	SetLampLit("chandelier_simple_3", false, true);
+	SetLampLit("chandelier_simple_4", false, true);
+	SetLampLit("chandelier_simple_5", false, true);
+	SetLampLit("chandelier_simple_6", false, true);
+	SetEntityActive("servant_grunt_3", true);
+	ShowEnemyPlayerPosition("servant_grunt_3");
+	
+}
+
+void UpdateSanity(string &in asTimer)
+{	
+	curSanity = GetPlayerSanity(); //get this update's sanity level
+	curOil = GetPlayerLampOil();  //get this update's oil level
+	
+	float tempOil; // variable to hold difference in curOil and oilFactor
+	if (curOil < oldOil)  //If we lost oil since 0.5 secs ago (meaning the lantern is in use)
+	{	
+		tempOil = curOil - oilFactor; 
+		SetPlayerLampOil(tempOil); //After losing the oilFactor, change player's oil amount
+	}
+	if (curOil <= 0.0f) // if result of operation above is <= 0, set it to zero
+	{
+		SetPlayerLampOil(0.0f);
+	}
+	
+	float temp;
+	if(curSanity < oldSanity)
+	{	
+		temp = curSanity - sanityFactor;
+		SetPlayerSanity(temp);
+	}
+	
+	if (curSanity >= oldSanity)
+	{
+		temp = curSanity + sanityFactor;
+		if(temp <= 100.0f)
+		{		
+			SetPlayerSanity(temp);
+		}
+		else
+		{
+			SetPlayerSanity(100.0f);
+		}
+	}
+	curSanity = GetPlayerSanity();
+	oldSanity = curSanity;
+	curOil = GetPlayerLampOil(); //get oil amount after we changed it with SetPlayerLampOil(tempOil);???
+	oldOil = curOil; //make sure the current oil is the next update's oldOil.
+	
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //update
+}
+
+
+void OnEnter()
+{
+	AutoSave();
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //Set up a timer on entry.	
+}
+
+void OnLeave()
+{
+	RemoveTimer("SanityTimer"); //Remove timer on exit
+}

@@ -1,0 +1,8 @@
+
+
+////////////////////////////
+// Run at the start of the game.
+void OnGameStart()
+{
+	SetGlobalVarInt("lockdown", 0); //0: lockdown is ON  || 1: Lockdown is OFF
+}

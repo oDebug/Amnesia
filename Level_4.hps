@@ -1,0 +1,231 @@
+float sanityFactor = 1.0f;
+float curSanity = 100.0f;
+float oldSanity = 100.0f;
+float oilFactor = 0.6f;
+float curOil = 100.0f; //meaningless value
+float oldOil = 100.0f; //meaningless value
+bool questStart = false;
+
+
+void OnStart()
+{	
+	PlaySoundAtEntity("", "16_water_stream_drips.snt", "book03_2", 0, true);
+	PlayMusic("01_amb_darkness", true, 1.0f, 0.1f, 5, true);	
+	SetLightVisible("PointLight_1", false);
+	SetLightVisible("PointLight_2", false);
+////////CALLBACKS
+	SetEntityPlayerInteractCallback("prison_4", "StartBookQuest", true);
+	SetEntityPlayerInteractCallback("prison_5", "StartBookQuest", true);
+	AddEntityCollideCallback("book_moveable_1", "ScriptArea_Book", "BookUnlock", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_TriggerEnemy", "TriggerEnemy", false, -1);
+	AddEntityCollideCallback("Player", "ScriptArea_OpenMetal", "OpenMetal", true, 1);	
+	AddEntityCollideCallback("servant_brute_1", "ScriptArea_TurnOn", "TurnOnKillEnemy", true, 1);
+	SetEntityCallbackFunc("torch_static01_4", "IgniteLight");
+	AddUseItemCallback("", "key_toOffice", "mansion_1", "UsedKeyOnDoor", true); //what key, what door, what method, destroy key on use
+	AddEntityCollideCallback("Player", "ScriptArea_OfficeLights", "OfficeLights", true, -1);
+	SetEntityConnectionStateChangeCallback("lever_small01_1", "StopLockdown");	
+////////	
+	//AddTimer("SanityTimer", 0.5f, "UpdateSanity");
+	oldOil = GetPlayerLampOil(); // set up old oil .5 secs before UpdateSanity is called for the first time.
+	oldSanity = GetPlayerSanity();
+	
+}
+
+void OpenMetal(string &in asParent, string &in asChild, int alState)
+{
+	AddPropImpulse("cabinet_metal_3", 0.0f, 0.0f, -2.5f, "World");
+}
+
+void SetWaterSee(string &in asParent, string &in asChild, int alState)
+{
+	ShowEnemyPlayerPosition("waterlurker_1");
+}
+
+void SpawnFinalMonster(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("servant_brute_2", true);
+	ShowEnemyPlayerPosition("servant_brute_2");
+}
+
+void StopLockdown(string &in asEntity, int alState) 
+{
+	
+	if(alState <= -0.9)
+	{
+		PlaySoundAtEntity("", "unlock_door.snt", "Player", 0, false);
+		AddEntityCollideCallback("Player", "ScriptArea_SetUpFinalMonster", "SpawnFinalMonster", true, 1);
+		AddEntityCollideCallback("Player", "ScriptArea_WaterExit", "SetWaterSee", true, 1);
+		StartScreenShake(0.1f, 6.0f, 1.0f, 1.4f);		
+		PlaySoundAtEntity("", "21_alex_low_freq_rumble2.snt", "Player", 0, false);		
+		SetMessage("Messages", "SwitchMessage", 9);
+		SetGlobalVarInt("lockdown", 1);
+		//21_alex_low_freq_rumble.snt
+	}	
+	
+}
+
+void DelayWaterEnemy(string &in asTimer)
+{
+	SetEntityActive("waterlurker_1", true);
+}
+
+void ResetWaterMonster(string &in asName, int alCount) 
+{
+	AddTimer("WaterTimer", 4.0f, "DelayWaterEnemy");	
+}
+
+void OfficeLights(string &in asParent, string &in asChild, int alState)
+{
+	CheckPoint ("SecondMonsterChpt", "PlayerStartArea_Chpt2", "ResetWaterMonster", "", "");
+	SetEntityActive("waterlurker_1", true);
+	for (int x = 15; x < 55; x++)
+	{
+		AddEnemyPatrolNode("waterlurker_1", "PathNodeArea_" + x, 0, "");
+	}
+	
+	
+	SetLightVisible("PointLight_3", false);
+	SetLightVisible("PointLight_4", false);
+	for (int x = 1; x < 13; x++)
+	{
+		if(x != 5)
+		{
+			SetLampLit("candlestick_wall_" + x, false, true);
+		}
+	}
+}
+
+void StartBookQuest(string &in asEntity)
+{
+	if(questStart)
+	{
+		return;
+	}
+	AddQuest("bookquest", "BookQuest");	
+	questStart = true;
+}
+
+void BookUnlock(string &in asParent, string &in asChild, int alState)
+{
+	CompleteQuest("bookquest", "BookQuest");
+	SetSwingDoorLocked("prison_4", false, false);
+	SetSwingDoorLocked("prison_5", false, false);
+	PlaySoundAtEntity("", "unlock_door.snt", "Player", 0, false);
+	SetEntityActive("painting_portrait_insane_1", true);
+	
+}
+
+void TurnOnKillEnemy(string &in asParent, string &in asChild, int alState)
+{
+	AddEntityCollideCallback("servant_brute_1", "ScriptArea_KillEnemy", "KillEnemy", false, 1);
+}
+
+void KillEnemy(string &in asParent, string &in asChild, int alState)
+{
+	if(alState == 1)
+	{
+		ClearEnemyPatrolNodes("servant_brute_1");
+		FadeEnemyToSmoke("servant_brute_1", true);
+		RemoveEntityCollideCallback("servant_brute_1", "ScriptArea_KillEnemy");
+	}	
+}
+
+void TriggerEnemy(string &in asParent, string &in asChild, int alState)
+{
+	bool temp;
+	temp = HasItem("key_toOffice");
+	if(alState == -1)
+	{
+		if(temp == true)
+		{
+			SetEntityActive("servant_brute_1", true);
+			AddTimer("EnemyTimer", 60.0f, "KillEnemyTimer");
+
+			for (int x = 1; x < 15; x++)
+			{
+				AddEnemyPatrolNode("servant_brute_1", "PathNodeArea_" + x, 0, "");
+			}
+			RemoveEntityCollideCallback("Player", "ScriptArea_TriggerEnemy");
+			CheckPoint ("FirstMonsterChpt", "PlayerStartArea_Chpt", "", "", "");
+		}		
+	}	
+}
+
+void KillEnemyTimer(string &in asTimer)
+{
+	ClearEnemyPatrolNodes("servant_brute_1");
+	FadeEnemyToSmoke("servant_brute_1", true);
+}
+
+void UsedKeyOnDoor(string &in asItem, string &in asEntity)
+{
+  SetSwingDoorLocked("mansion_1", false, true);
+  PlaySoundAtEntity("", "unlock_door.snt", "mansion_1", 0, false);
+  RemoveItem("key_toOffice");
+}
+
+void IgniteLight(string &in asEntity, string &in type)
+{
+	if(type == "OnIgnite" && asEntity == "torch_static01_4")
+	{
+		SetLightVisible("PointLight_2", true);
+		SetEntityActive("chair_nice02_2", true);
+	}
+}
+
+void UpdateSanity(string &in asTimer)
+{	
+	curSanity = GetPlayerSanity(); //get this update's sanity level
+	curOil = GetPlayerLampOil();  //get this update's oil level
+	
+	float tempOil; // variable to hold difference in curOil and oilFactor
+	if (curOil < oldOil)  //If we lost oil since 0.5 secs ago (meaning the lantern is in use)
+	{	
+		tempOil = curOil - oilFactor; 
+		SetPlayerLampOil(tempOil); //After losing the oilFactor, change player's oil amount
+	}
+	if (curOil <= 0.0f) // if result of operation above is <= 0, set it to zero
+	{
+		SetPlayerLampOil(0.0f);
+	}
+	
+	float temp;
+	if(curSanity < oldSanity)
+	{	
+		temp = curSanity - sanityFactor;
+		SetPlayerSanity(temp);
+	}
+	
+	if (curSanity >= oldSanity)
+	{
+		temp = curSanity + sanityFactor;
+		if(temp <= 100.0f)
+		{		
+			SetPlayerSanity(temp);
+		}
+		else
+		{
+			SetPlayerSanity(100.0f);
+		}
+	}
+	curSanity = GetPlayerSanity();
+	oldSanity = curSanity;
+	curOil = GetPlayerLampOil(); //get oil amount after we changed it with SetPlayerLampOil(tempOil);???
+	oldOil = curOil; //make sure the current oil is the next update's oldOil.
+	
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //update
+}
+
+
+void OnEnter()
+{	
+	AutoSave();
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //Set up a timer on entry.
+}
+
+void OnLeave()
+{
+	StopMusic(4.0f, 5);
+	ClearEnemyPatrolNodes("waterlurker_1");
+	RemoveTimer("SanityTimer"); //Remove timer on exit
+}

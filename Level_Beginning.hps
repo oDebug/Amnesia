@@ -1,0 +1,318 @@
+float sanityFactor = 0.5f;
+float curSanity = 100.0f;
+float oldSanity = 20.0f;
+float oilFactor = 0.6f;
+float curOil = 0.0f;
+float oldOil = 0.0f;
+//The message at the lever needs to only happen once
+bool messageSeen = false;
+void OnStart()
+{
+	
+	//AddTimer("SanityTimer", 0.5f, "UpdateSanity");
+	SetLightVisible("PointLight_9", false);
+	SetLightVisible("PointLight_10", false);
+	SetLightVisible("PointLight_11", false);
+	SetLightVisible("PointLight_7", false);
+	SetLightVisible("PointLight_8", false);
+	SetLightVisible("PointLight_12", false);
+	SetLampLit("torch_static01_1", false, true);
+	SetLampLit("torch_static01_2", false, true);
+	SetLampLit("torch_static01_3", false, true);
+	SetLampLit("torch_static01_4", false, true);
+	SetLampLit("torch_static01_5", false, true);
+	SetLampLit("torch_static01_6", false, true);
+	SetPlayerSanity(20.0f);
+	SetPlayerHealth(20.0f);
+	SetPlayerLampOil(0.0f);
+////////CALLBACKS
+	SetLevelDoorLockedSound("level_hub_1", "locked_door.snt");
+	AddUseItemCallback("", "key_ToLevel2", "level_hub_1", "UsedKeyOnDoor", true);
+	SetEntityCallbackFunc("candlestick_floor_6", "LitCandle");
+	SetEntityCallbackFunc("key_ToLevel2", "PickupKey"); //Enemy to spawn on pickup
+	AddEntityCollideCallback("Player", "ScriptArea_Despawn", "CheckpointA", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_Music1", "TriggerMusic", true, 1);
+	AddEntityCollideCallback("Player", "ScriptArea_HearJesus", "TriggerGhoul", false, 1); //Don't delete on collide
+	AddEntityCollideCallback("Player", "ScriptArea_HearJesus_1", "TriggerGhoul", false, -1); //
+	AddEntityCollideCallback("Player", "ScriptArea_EncounterLever", "Quest_Lever", true, 1);
+	AddEntityCollideCallback("lever_small_lever_1", "ScriptArea_Lever", "LeverBuild", true, 1);
+	AddEntityCollideCallback("armour_nice_complete_1", "ScriptArea_ArmorHead", "ArmorHeadPrank", true, -1);
+	AddEntityCollideCallback("servant_brute_1", "ScriptArea_Despawn", "DespawnBrute", true, -1);
+	SetEntityConnectionStateChangeCallback("lever_complete", "LeverLight");
+	AddEntityCollideCallback("Player", "ScriptArea_Creak", "CabinetCreak", true, 1);
+	SetEntityPlayerInteractCallback("metal_1", "StartLeaveQuest", true);
+	SetEntityPlayerInteractCallback("level_wood_1", "EndGame", true);
+	//AddEntityCollideCallback("Player", "ScriptArea_EnableWindowBrute", "EnableWindowBrute", true, 1);
+////////
+	AddEnemyPatrolNode("servant_brute_3", "PathNodeArea_WindowBrute_1", 10, "");
+	AddEnemyPatrolNode("servant_brute_3", "PathNodeArea_WindowBrute_2", 10, "");
+	SetPlayerActive(false);
+	PlaySoundAtEntity("bin_breathing", "BinauralDemo.snt", "Player", 0.0f, false);
+	AddTimer("DemoTimer", 9.5f, "PlayBeginMusic");	
+}
+
+void StartLeaveQuest(string &in asEntity)
+{	
+	AddQuest("leavequest", "LeaveQuest");
+}
+
+void PlayBeginMusic(string &in asTimer)
+{
+	PlayMusic("27_event_bang", false, 1.0f, 0.1f, 5, true);
+	SetPlayerActive(true);
+}
+
+void CheckpointA(string &in asParent, string &in asChild, int alState)
+{
+	CheckPoint ("FirstMonsterChpt", "PlayerStartArea_Chpt", "", "", "");
+}
+
+void UsedKeyOnDoor(string &in asItem, string &in asEntity)
+{
+  SetLevelDoorLocked("level_hub_1", false);
+  PlaySoundAtEntity("", "unlock_door.snt", "level_hub_1", 0, false);
+  RemoveItem("key_ToLevel2");
+}
+
+void TriggerGhoul(string &in asParent, string &in asChild, int alState)
+{
+	if(alState == 1)//they entered the area
+	{
+		PlaySoundAtEntity("ClockVoice", "ambience_voice.snt", "cross_small_wood_1", 1.0f, true);
+		//AddEntityCollideCallback("Player", "ScriptArea_HearJesus_1", "TriggerGhoul", true, -1); //
+	}
+	else if(alState == -1)
+	{
+		StopSound("ClockVoice", 2.0f);
+		//AddEntityCollideCallback("Player", "ScriptArea_HearJesus", "TriggerGhoul", true, 1); //
+	}
+}
+
+void LitCandle(string &in asEntity, string &in type)
+{
+	if(asEntity == "candlestick_floor_6" && type == "OnIgnite")
+	{
+		SetLightVisible("PointLight_7", true);
+		SetLightVisible("PointLight_8", true);
+		SetLightVisible("PointLight_12", true);
+	}
+}
+
+void UpdateSanity(string &in asTimer)
+{
+	AddPropImpulse("hanging_prisoner_1", 0.0f, 0.2f, -0.2f, "World");
+	curSanity = GetPlayerSanity();
+	curOil = GetPlayerLampOil();
+	
+	float tempOil;
+	if (curOil <= 0.0f)
+	{
+		SetPlayerLampOil(0.0f);
+	}
+	else if (curOil < oldOil)  //?
+	{		
+		tempOil = curOil - oilFactor;
+		SetPlayerLampOil(tempOil);
+	}
+	
+	float temp;
+	if(curSanity < oldSanity)
+	{	
+		temp = curSanity - sanityFactor;
+		SetPlayerSanity(temp);
+	}
+	
+	if (curSanity >= oldSanity)
+	{
+		temp = curSanity + sanityFactor;
+		if(temp <= 100.0f)
+		{		
+			SetPlayerSanity(temp);
+		}
+		else
+		{
+			SetPlayerSanity(100.0f);
+		}
+	}
+	
+	curSanity = GetPlayerSanity();
+	curOil = GetPlayerLampOil();
+	oldOil = curOil;
+	oldSanity = curSanity;
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity");
+}
+
+void DespawnBrute(string &in asParent, string &in asChild, int alState)
+{
+	if(alState == -1)
+	{
+		SetEntityActive("servant_brute_1", false);
+		StopMusic(2.0f, 7);
+		ClearEnemyPatrolNodes("servant_brute_1");
+	}
+}
+
+void PickupKey(string &in asEntity, string &in type)
+{
+	if(type == "OnPickup")
+	{
+		//Activate Monster
+		SetEntityActive("servant_brute_1", true);
+		AddEnemyPatrolNode("servant_brute_1", "PathNodeArea_1", 4, "");
+		for(int x = 2; x <= 15; x++)
+		{
+			AddEnemyPatrolNode("servant_brute_1", "PathNodeArea_" + x, 0, "");
+		}
+		//Setup timer just in case
+		AddTimer("timer_brute", 40.0f, "DespawnBruteWithTimer");
+		//Create intense music
+		PlayMusic("08_amb", true, 1.0f, 0.5f, 7, false);
+		//Turn lights back off
+		SetLightVisible("PointLight_9", false);
+		SetLightVisible("PointLight_10", false);
+		SetLightVisible("PointLight_11", false);
+		SetLampLit("torch_static01_1", false, true);
+		SetLampLit("torch_static01_2", false, true);
+		SetLampLit("torch_static01_3", false, true);
+		SetLampLit("torch_static01_4", false, true);
+		SetLampLit("torch_static01_5", false, true);
+		SetLampLit("torch_static01_6", false, true);
+	}
+}
+
+void DespawnBruteWithTimer(string &in asTimer)
+{
+	SetEntityActive("servant_brute_1", false);
+	StopMusic(2.0f, 7);
+	ClearEnemyPatrolNodes("servant_brute_1");
+} 
+
+void ArmorHeadPrank(string &in asParent, string &in asChild, int alState)
+{
+	if(alState == -1)
+	{
+		SetEntityActive("armour_nice_complete_4", true);
+		//SetEntityActive("armour_nice_complete_1", false);
+	}
+}
+
+void RemoveWindowBrute(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("servant_brute_3", false);
+}
+
+void EnableWindowBrute(string &in asParent, string &in asChild, int alState)
+{
+	SetEntityActive("servant_brute_3", true);
+}
+
+void Quest_Lever(string &in asParent, string &in asChild, int alState)
+{
+	AddQuest("findleverquest", "FindLeverQuest");
+	PlayMusic("02_amb_strange", true, 1.0f, 0.9f, 6, true); //Also, wisper "Turn on the light"
+	AddEntityCollideCallback("Player", "ScriptArea_RemoveWindowBrute", "RemoveWindowBrute", true, 1);
+	//ScriptArea_RemoveWindowBrute
+}
+
+void CabinetCreak(string &in asParent, string &in asChild, int alState)
+{
+	AddPropImpulse("cabinet_metal_1", 0.0f, 0.0f, -0.2f, "World");
+	AddPropImpulse("cellar_wood01_2", 1.8f, 0.0f, 0.0f, "World");
+	CreateParticleSystemAtEntity("DoorPS", "ps_dust_ghost.ps", "cellar_wood01_2", false);
+}
+
+void TriggerMusic(string &in asParent, string &in asChild, int alState)
+{
+	if(asChild == "ScriptArea_Music1")
+	{
+		PlayMusic("07_amb", false, 1.0f, 0.1f, 5, true);
+	}
+}
+
+void LeverBuild(string &in asParent, string &in asChild, int alState)
+{
+	CompleteQuest("findleverquest", "FindLeverQuest");
+	SetEntityActive("lever_complete", true);
+	SetEntityActive("lever_small_lever_1", false);
+	SetEntityActive("lever_small_mount_1", false);	
+}
+
+void LeverLight(string &in asEntity, int alState) 
+{
+	if(alState <= -0.9)
+	{
+		SetLightVisible("PointLight_9", true);
+		SetLightVisible("PointLight_10", true);
+		SetLightVisible("PointLight_11", true);
+		SetLampLit("torch_static01_1", true, true);
+		SetLampLit("torch_static01_2", true, true);
+		SetLampLit("torch_static01_3", true, true);
+		SetLampLit("torch_static01_4", true, true);
+		SetLampLit("torch_static01_5", true, true);
+		SetLampLit("torch_static01_6", true, true);
+		if(!messageSeen)
+		{
+			SetMessage("Messages", "TortureRoom", 15);
+			messageSeen = true;
+		}
+	}
+}
+
+void EndGame(string &in asEntity)
+{
+	if(asEntity == "level_wood_1")
+	{
+		StartCredits("02_amb_strange", false, "Ending", "MainCredits", 9001);
+	}
+}
+
+void FinalWave(string &in asParent, string &in asChild, int alState)
+{
+		//SetLightVisible("PointLight_3", false);
+		//SetLightVisible("PointLight_1", false);
+		//SetLightVisible("PointLight_2", false);
+		
+		
+		SetEntityActive("servant_grunt_1", true);
+		for(int i = 16; i < 19; i++)
+		{
+			AddEnemyPatrolNode("servant_grunt_1", "PathNodeArea_" + i, 0, "");
+		}		
+}
+
+void SpawnBrute(string &in asTimer)
+{
+	SetSwingDoorLocked("metal_1", false, false);
+	SetEntityActive("servant_brute_2", true);
+		for(int i = 19; i < 30; i++)
+		{
+			AddEnemyPatrolNode("servant_brute_2", "PathNodeArea_" + i, 0, "");
+		}		
+}
+
+void ResetWave(string &in asName, int alCount)
+{
+	AddTimer("TriggerBrute2", 4.0f, "SpawnBrute");
+	SetPropHealth("cellar_wood01_2", 100.0f);
+	AddEntityCollideCallback("Player", "ScriptArea_FinalWave", "FinalWave", true, 1);	
+} 
+
+void OnEnter()
+{
+	AutoSave();
+	CheckPoint("WaveChpt", "PlayerStartArea_FromLevel2", "ResetWave", "", "");
+	AddTimer("SanityTimer", 0.5f, "UpdateSanity"); //Set up a timer on entry.
+	int temp = GetGlobalVarInt("lockdown");
+	if(temp == 1)
+	{		
+		AddEntityCollideCallback("Player", "ScriptArea_FinalWave", "FinalWave", true, 1);
+		AddTimer("TriggerBrute2", 4.0f, "SpawnBrute");		
+	}
+	
+}
+
+void OnLeave()
+{
+	StopMusic(2.0f, 6);
+	RemoveTimer("SanityTimer"); //Remove timer on exit
+}
